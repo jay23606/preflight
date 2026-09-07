@@ -137,7 +137,7 @@ preflight --fix                    # let checks that can repair themselves do it
 
 ## Examples
 
-Three worked examples, each with a clean state and a realistic bad change:
+Four worked examples, each with a clean state and a realistic bad change:
 
 ```bash
 node examples/run-demo.js                 # all of them
@@ -147,6 +147,9 @@ node examples/run-demo.js node-service    # one
 - [`examples/node-service`](examples/node-service) — env drift, migration rollbacks, secret scanning, spec sync. Checks in JavaScript.
 - [`examples/python-api`](examples/python-api) — model/migration divergence, unpinned requirements, notebook outputs containing customer data. Checks in Python.
 - [`examples/go-cli`](examples/go-cli) — generated code drift, no-panic-in-handlers. Checks in Go.
+- [`examples/dotnet-webforms`](examples/dotnet-webforms) — the traps that exist in exactly one codebase: inline .aspx pages compiled at request time rather than by MSBuild, committed designer files, a logger shadowed into silence.
+
+The .NET example is the one to read if you are deciding whether this is worth adopting. Every check in it is invisible to the compiler, invisible to a linter, and known only to whoever has been burned by it — and each is about twenty lines of script. That is the category this tool exists to hold.
 
 The checks in each example are written in that example's own language, on purpose: preflight only shells out, so checks are written in whatever the repo already speaks by the people who already maintain it.
 

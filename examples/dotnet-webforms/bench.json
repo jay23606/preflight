@@ -1,0 +1,19 @@
+{
+  "defects": [
+    {
+      "check": "inline-aspx-imports-are-available",
+      "title": "Inline .aspx imports a namespace no configured assembly provides",
+      "surfaces": "500 on first request, build is green"
+    },
+    {
+      "check": "no-logger-shadowing",
+      "title": "Page redeclares ILogger, shadowing the base page's",
+      "surfaces": "silently logs nothing in production"
+    },
+    {
+      "check": "no-designer-files",
+      "title": "Generated designer file committed",
+      "surfaces": "conflict on every parallel branch"
+    }
+  ]
+}

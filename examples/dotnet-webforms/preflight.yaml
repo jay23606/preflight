@@ -1,0 +1,45 @@
+# A legacy ASP.NET WebForms application.
+#
+# Every check here is a trap that exists in THIS codebase and nowhere else.
+# That is the point: an off-the-shelf tool will never ship these, a linter has
+# no opinion about them, and the build is green while every one of them is
+# broken. They are the things a senior engineer explains to each new hire —
+# and to each AI agent — over and over until someone writes them down.
+#
+# The checks are written in JavaScript rather than C# on purpose: a check runs
+# on every commit, and `dotnet run` costs seconds of build and JIT before it
+# prints anything. A check that slow gets disabled. Pick the fastest runtime
+# on the machine, not the one the application happens to be written in.
+version: 1
+
+checks:
+  - name: inline-aspx-imports-are-available
+    when: ["**/*.aspx", "**/*.ashx", "**/*.ascx"]
+    run: node tools/check-inline-aspx.js {files}
+    budget: 10s
+    why: >
+      A page with no CodeBehind is compiled by the runtime at REQUEST time,
+      from the assemblies listed in Web.config — not by MSBuild. An @Import
+      of a namespace that is not in that list builds clean, deploys clean,
+      and throws a compilation error the first time a user opens the page.
+      Neither the solution build nor csc will tell you.
+
+  - name: no-designer-files
+    when: ["**/*.designer.cs"]
+    run: node tools/check-designer-files.js {files}
+    budget: 5s
+    why: >
+      Designer files are regenerated per-machine by Visual Studio. Committing
+      one guarantees a conflict on every branch that touches the same page,
+      and the resolution is always "take either", which teaches everyone to
+      resolve conflicts without reading them.
+
+  - name: no-logger-shadowing
+    when: ["**/*.aspx.cs", "**/*.ashx.cs"]
+    run: node tools/check-logger-shadowing.js {files}
+    budget: 10s
+    why: >
+      Redeclaring an ILogger on a page that already inherits one from its
+      base class does not fail, warn, or throw. It silently shadows the
+      configured logger, and every call on it goes nowhere — so the page
+      looks healthy in production precisely when it is not.
