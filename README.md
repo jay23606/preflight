@@ -58,7 +58,9 @@ Every one of those passes `tsc`, `go vet`, `eslint`, and the test suite. Every o
 
 **4/4 caught by preflight. 0/4 caught by the baseline**, which exits 0 on every one of them. Median cost: **~250 ms**.
 
-The benchmark deliberately reports what it does *not* measure: whether a reviewer would have caught the same defect by reading the diff, false-positive rates on real repositories, and anything about how often these defects actually occur. Run it yourself — the numbers regenerate.
+Two benchmarks ship with the repo. This one seeds known defects; [`bench/replay.js`](bench/REPLAY.md) replays a real repository history to measure how often checks would actually have fired — which is the number that decides whether installing this is worth it.
+
+The seeded benchmark deliberately reports what it does *not* measure: whether a reviewer would have caught the same defect by reading the diff, false-positive rates on real repositories, and anything about how often these defects actually occur. Run it yourself — the numbers regenerate.
 
 ## Why this matters more with AI in the loop
 
@@ -103,7 +105,7 @@ A check may also declare a `fix:` command; `preflight --fix` runs it and then re
 
 ### Presets
 
-`preflight init` starts you with three inherited check sets, so the tool is useful before you have written anything:
+`preflight init` starts you with three inherited check sets so the manifest is not an empty file staring at you:
 
 ```yaml
 extends:
@@ -116,7 +118,11 @@ disable: [no-large-files] # drop one you do not want
 
 A local check with the same `name` as an inherited one replaces it in place — keep the preset, retune the check. `extends` also takes a path, so a team can share one file across repositories.
 
-`preflight:agent` is worth calling out: it catches the failure modes specific to machine-written code. A model that writes `// ... rest of the implementation unchanged` into a real source file has deleted everything that comment claims to stand for, and nothing else in your toolchain will tell you.
+`preflight:agent` is aimed at machine-written code specifically. A model that writes `// ... rest of the implementation unchanged` into a real source file has deleted everything that comment claims to stand for, and nothing else in your toolchain will tell you.
+
+**But do not expect much from the presets.** Replayed across 468 real commits in eight repositories, they fired twice — both times "you committed a large PNG". The full numbers, including a false positive the replay found in our own secret scanner, are in [`bench/REPLAY.md`](bench/REPLAY.md). Generic checks catch generic mistakes, and generic mistakes are not the expensive ones.
+
+The value is in the check *you* write the next time something breaks. The tool is a place to put that; it does not supply it.
 
 `when` globs decide whether a check runs at all. `{files}` expands to the matched paths. `budget` kills the whole process tree at the limit, so one hung check cannot hang your commit. `why` is printed on failure — it is the part that teaches, and the reason a failure is actionable by someone who did not write the check.
 

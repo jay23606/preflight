@@ -110,3 +110,22 @@ test('no-large-files respects its threshold', () => {
   assert.equal(result.status, 1);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('secret-scan ignores local development connection strings', () => {
+  // Found by replaying a real repository: a shell default pointing at
+  // localhost with a stock password is not a leaked credential.
+  const result = runScript('secret-scan.js', {
+    'run-sql-tests.sh': 'DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/postgres}"\n',
+    'docker-compose.yml': 'REDIS_URL: redis://user:password@redis:6379\n',
+    'dev.env': 'DB=mysql://root:root@127.0.0.1:3306/app\n',
+  });
+  assert.equal(result.code, 0, result.out);
+});
+
+test('secret-scan still catches a real remote credential', () => {
+  const result = runScript('secret-scan.js', {
+    'prod.env': 'DATABASE_URL=postgres://app_prod:Xk29fLm3QzR7pW@db.prod.example.com:5432/app\n',
+  });
+  assert.equal(result.code, 1, result.out);
+  assert.match(result.out, /connection string/);
+});

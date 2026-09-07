@@ -25,6 +25,25 @@ const PATTERNS = [
 // Placeholders people legitimately commit.
 const INNOCENT = /\b(example|placeholder|changeme|change_me|your[_-]?\w*|xxx+|<[^>]+>|\$\{[^}]+\}|%[A-Z_]+%|\*{4,}|redacted|dummy|fake|sample|test[_-]?key)\b/i;
 
+// A connection string aimed at localhost with a stock password is a local
+// development default, not a leaked credential — `postgres:postgres@localhost`
+// appears in every project's test harness. Flagging it teaches people that
+// this check is noise, and then they stop reading it.
+const LOCAL_HOSTS = /@(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0|host\.docker\.internal|db|postgres|mysql|redis|mongo)(:\d+)?[/:]/i;
+const STOCK_PASSWORDS = new Set(['postgres', 'mysql', 'root', 'admin', 'password', 'guest', 'test', 'example', 'local', 'dev', 'devpassword', 'secret']);
+
+function isLocalDevelopmentUrl(line) {
+  const url = line.match(/(?:postgres|postgresql|mysql|mongodb(?:\+srv)?|redis|amqp):\/\/([^:\s'"]+):([^@\s'"]+)@/i);
+  if (!url) return false;
+  const [, user, password] = url;
+  if (STOCK_PASSWORDS.has(password.toLowerCase())) return true;
+  if (user.toLowerCase() === password.toLowerCase()) return true;
+  // A shell or template default (${VAR:-...}, $VAR, {{ var }}) is a fallback,
+  // not a credential someone typed in.
+  if (/\$\{[^}]*:-|\{\{|\$\(|%\w+%/.test(line) && LOCAL_HOSTS.test(line)) return true;
+  return LOCAL_HOSTS.test(line) && password.length < 12;
+}
+
 const root = process.env.PREFLIGHT_ROOT || process.cwd();
 const MAX_BYTES = 2 * 1024 * 1024;
 const hits = [];
@@ -49,9 +68,13 @@ for (const relative of process.argv.slice(2)) {
 
   content.split(/\r?\n/).forEach((line, index) => {
     if (/preflight[- ]?ignore/i.test(line)) return;
+    if (isLocalDevelopmentUrl(line)) return;
     for (const { name, regex } of PATTERNS) {
-      if (!regex.test(line)) continue;
-      if (INNOCENT.test(line)) continue;
+      const found = regex.exec(line);
+      if (!found) continue;
+      // Test the matched credential itself, not the whole line: a hostname
+      // like db.prod.example.com would otherwise excuse a real password.
+      if (INNOCENT.test(found[0])) continue;
       hits.push(`${relative}:${index + 1}  looks like a ${name}`);
       return;
     }

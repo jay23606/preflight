@@ -1,0 +1,9 @@
+# The manifest used for history replay: only the checks preflight ships, so
+# the result answers "what would the out-of-the-box presets have caught in
+# this repository's real history", with nothing tuned to the repository.
+version: 1
+
+extends:
+  - preflight:hygiene
+  - preflight:secrets
+  - preflight:agent
