@@ -1,0 +1,37 @@
+# preflight:hygiene — things that make a green build a lie.
+#
+# Language-agnostic, cheap, and each one has the same failure mode: CI reports
+# success while testing or shipping something other than what you think.
+version: 1
+
+checks:
+  - name: no-focused-tests
+    when: ["**"]
+    not: ["**/node_modules/**", "**/vendor/**"]
+    run: node {here}/scripts/no-focused-tests.js {files}
+    budget: 10s
+    why: >
+      A committed .only / fdescribe / #[ignore] silently narrows the suite to
+      one case, so CI goes green while testing almost nothing. It is the
+      cheapest possible way to ship a regression.
+
+  - name: no-merge-markers
+    when: ["**"]
+    not: ["**/node_modules/**", "**/*.rej", "**/*.orig"]
+    run: node {here}/scripts/no-merge-markers.js {files}
+    budget: 10s
+    why: >
+      Conflict markers committed into a file that is not compiled — YAML,
+      SQL, Markdown, a template — do not fail the build. They fail at
+      runtime, or silently change meaning.
+
+  - name: no-large-files
+    when: ["**"]
+    not: ["**/node_modules/**"]
+    run: node {here}/scripts/no-large-files.js {files}
+    budget: 10s
+    severity: warn
+    why: >
+      A large binary committed by accident is permanent: it stays in every
+      clone forever, because rewriting history to remove it breaks everyone
+      else's checkout.

@@ -1,0 +1,15 @@
+{
+  "baseline": "go build ./... && go vet ./...",
+  "defects": [
+    {
+      "check": "generated-in-sync",
+      "title": "schema.json changed, types.gen.go not regenerated",
+      "surfaces": "service serves the old shape silently"
+    },
+    {
+      "check": "no-panic-in-handlers",
+      "title": "panic() in a new refund handler",
+      "surfaces": "process crash, not a 500"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['18', '20', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+
+  examples:
+    name: examples and benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # Every example must fail on its seeded bad change. An example that
+      # stops failing is a broken example, not a passing one.
+      - name: run the examples
+        run: node examples/run-demo.js
+
+      - name: benchmark
+        run: BENCH_OUT=bench/report.md node bench/run.js
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report
+          path: bench/report.md
+
+  self:
+    name: preflight checks itself
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: preflight --since the base branch
+        run: |
+          BASE="${{ github.base_ref || 'main' }}"
+          git fetch --no-tags --depth=50 origin "$BASE" || true
+          node bin/preflight.js --since "origin/$BASE" || node bin/preflight.js --all

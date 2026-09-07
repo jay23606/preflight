@@ -1,0 +1,20 @@
+{
+  "baseline": "python3 -m compileall -q app migrations tools",
+  "defects": [
+    {
+      "check": "model-has-migration",
+      "title": "New refunded_cents column with no migration",
+      "surfaces": "deploy fails against a real database"
+    },
+    {
+      "check": "requirements-pinned",
+      "title": "stripe>=11.0 added unpinned",
+      "surfaces": "non-reproducible build"
+    },
+    {
+      "check": "notebooks-stripped",
+      "title": "Notebook committed with customer rows in its output",
+      "surfaces": "PII in the repository, permanently"
+    }
+  ]
+}

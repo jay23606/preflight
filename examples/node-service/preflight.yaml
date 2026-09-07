@@ -1,0 +1,43 @@
+# A Node/TypeScript service. Three invariants that lint and unit tests
+# structurally cannot catch, because each one is about the relationship
+# between two files rather than the contents of one.
+version: 1
+
+checks:
+  - name: env-documented
+    when: ["src/**/*.{ts,js}"]
+    run: node tools/check-env.js {files}
+    budget: 5s
+    why: >
+      Every process.env read must appear in .env.example. A new variable that
+      nobody documented deploys fine in CI and then comes up undefined in
+      production, usually as a confusing downstream error rather than a
+      startup failure.
+
+  - name: migration-has-rollback
+    when: ["db/migrations/**/*.sql"]
+    run: node tools/check-migrations.js {files}
+    budget: 5s
+    why: >
+      Every NNN.up.sql needs a matching NNN.down.sql. A migration without a
+      rollback is discovered during the incident, not before it.
+
+  - name: no-hardcoded-secrets
+    when: ["**/*.{ts,js,json,yaml,yml,env}"]
+    not: ["**/*.example", ".env.example", "tools/**"]
+    run: node tools/check-secrets.js {files}
+    budget: 5s
+    why: >
+      A key that reaches a remote branch is compromised even if the next
+      commit removes it — rotation is the only fix, so the cheap moment to
+      catch it is now.
+
+  - name: routes-match-spec
+    severity: warn
+    when: ["src/routes/**/*.ts"]
+    run: node tools/check-spec.js
+    budget: 5s
+    why: >
+      Touching a route handler without touching openapi.yaml usually means
+      the published contract now lies. Warn rather than block, because the
+      spec legitimately lags a refactor that changes no behavior.

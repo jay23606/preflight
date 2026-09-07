@@ -1,0 +1,28 @@
+# preflight:agent — failure modes specific to machine-written code.
+#
+# These are not style rules. Each one is a way that generated code passes
+# review by looking finished while being structurally incomplete.
+version: 1
+
+checks:
+  - name: no-elided-code
+    when: ["**"]
+    not: ["**/*.md", "**/*.mdx", "**/*.txt", "**/node_modules/**", "**/*.patch", "**/*.diff"]
+    run: node {here}/scripts/no-elided-code.js {files}
+    budget: 10s
+    why: >
+      A model summarising a region it did not rewrite — "... rest of the
+      implementation unchanged", "// existing code here" — is describing a
+      file, not writing one. Committed into a real source file it silently
+      deletes everything it claims to be standing in for.
+
+  - name: no-unimplemented-stubs
+    when: ["**"]
+    not: ["**/*.md", "**/node_modules/**", "**/*_test.*", "**/test/**", "**/tests/**", "**/*.spec.*"]
+    run: node {here}/scripts/no-unimplemented-stubs.js {files}
+    budget: 10s
+    severity: warn
+    why: >
+      A stub that throws "not implemented" compiles, type-checks, passes
+      review, and fails in production. Warn rather than block: a deliberate
+      abstract method is legitimate, so this needs a human to judge.

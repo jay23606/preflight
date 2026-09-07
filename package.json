@@ -1,0 +1,44 @@
+{
+  "name": "@jay23606/preflight",
+  "version": "0.3.0",
+  "description": "Run only the checks a diff actually implicates — the fast, repo-specific gates that linters and test suites miss.",
+  "bin": {
+    "preflight": "bin/preflight.js"
+  },
+  "main": "src/cli.js",
+  "files": [
+    "bin",
+    "src",
+    "presets",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "preflight": "node bin/preflight.js"
+  },
+  "keywords": [
+    "pre-commit",
+    "hooks",
+    "lint",
+    "ci",
+    "verification",
+    "agents",
+    "ai",
+    "guardrails"
+  ],
+  "license": "MIT",
+  "author": "jay23606",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jay23606/preflight.git"
+  },
+  "homepage": "https://github.com/jay23606/preflight#readme",
+  "bugs": {
+    "url": "https://github.com/jay23606/preflight/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

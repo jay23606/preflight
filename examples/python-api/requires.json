@@ -1,0 +1,1 @@
+{ "command": "python3", "args": ["--version"], "reason": "python3 is not installed" }

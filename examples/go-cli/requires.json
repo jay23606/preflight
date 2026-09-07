@@ -1,0 +1,1 @@
+{ "command": "go", "args": ["version"], "reason": "the go toolchain is not installed" }

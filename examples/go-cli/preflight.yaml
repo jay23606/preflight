@@ -1,0 +1,24 @@
+# A Go service. The checks are Go programs run with `go run` — again, the
+# repo's own language, because the people maintaining the checks are the
+# people maintaining the repo.
+version: 1
+
+checks:
+  - name: generated-in-sync
+    when: ["api/schema.json"]
+    run: go run ./tools/checkgen
+    budget: 30s
+    why: >
+      api/types.gen.go is generated from api/schema.json. When the schema
+      moves without the generated file, the build still succeeds and the
+      service silently serves the old shape until someone reruns go generate.
+
+  - name: no-panic-in-handlers
+    when: ["internal/handlers/**/*.go"]
+    not: ["**/*_test.go"]
+    run: go run ./tools/checkpanic {files}
+    budget: 30s
+    why: >
+      A panic in a handler takes down the whole process, not just the
+      request. Handlers return errors; this is a house rule that `go vet`
+      has no opinion about.

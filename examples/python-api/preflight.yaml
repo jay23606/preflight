@@ -1,0 +1,30 @@
+# A Python service. The checks are written in Python — preflight only shells
+# out, so a check is written in whatever language the repo already speaks.
+version: 1
+
+checks:
+  - name: model-has-migration
+    when: ["app/models.py"]
+    run: python3 tools/check_migration.py
+    budget: 10s
+    why: >
+      A change to models.py with no new file under migrations/ means the ORM
+      and the database have diverged. Nothing fails locally, because your dev
+      database was created from the models; it fails on deploy against a real
+      one.
+
+  - name: requirements-pinned
+    when: ["requirements*.txt"]
+    run: python3 tools/check_pins.py {files}
+    budget: 10s
+    why: >
+      Unpinned dependencies make the build non-reproducible: the image that
+      passed CI is not the image that ships an hour later.
+
+  - name: notebooks-stripped
+    when: ["**/*.ipynb"]
+    run: python3 tools/check_notebooks.py {files}
+    budget: 10s
+    why: >
+      Committed notebook outputs bloat the repo and routinely leak customer
+      rows and credentials that were printed during exploration.

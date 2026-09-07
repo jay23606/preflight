@@ -1,0 +1,7 @@
+{
+  "Order": {
+    "id": "string",
+    "total_cents": "int",
+    "refunded_cents": "int"
+  }
+}

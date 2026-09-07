@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>preflight — run only the checks a diff implicates</title>
+<meta name="description" content="A zero-dependency runner for the fast, repo-specific checks that linters and test suites miss. Point your AI agent at it.">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfbfa;
+    --panel: #ffffff;
+    --ink: #1a1a18;
+    --muted: #5f5f58;
+    --line: #e3e1dc;
+    --accent: #b0442b;
+    --ok: #2f7a4d;
+    --warn: #a67611;
+    --code-bg: #16150f;
+    --code-ink: #e8e5dc;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131311;
+      --panel: #1b1b18;
+      --ink: #eceae4;
+      --muted: #9d9a91;
+      --line: #2e2d29;
+      --accent: #e0745a;
+      --ok: #6dbb8b;
+      --warn: #d3a541;
+      --code-bg: #0e0e0c;
+      --code-ink: #e8e5dc;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.65 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 88px 0 56px; border-bottom: 1px solid var(--line); }
+  h1 {
+    font-size: clamp(40px, 7vw, 64px);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    margin: 0 0 18px;
+    font-weight: 620;
+  }
+  h1 .dot { color: var(--accent); }
+  .tagline { font-size: clamp(19px, 2.4vw, 23px); color: var(--muted); margin: 0 0 32px; max-width: 44ch; }
+  h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 64px 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 { font-size: 18px; margin: 32px 0 8px; letter-spacing: -0.01em; }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  code { font-family: var(--mono); font-size: 0.9em; background: color-mix(in oklab, var(--ink) 8%, transparent); padding: 1px 5px; border-radius: 4px; }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 20px 22px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin: 0 0 20px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .cmd { color: #8fb8d8; }
+  .x { color: #e8806a; }
+  .w { color: #d9b25e; }
+  .ok { color: #7fc79b; }
+  .dim { color: #7d7a70; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-block;
+    padding: 11px 20px;
+    border-radius: 8px;
+    font-weight: 550;
+    text-decoration: none;
+    font-size: 15px;
+    border: 1px solid var(--line);
+  }
+  .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .btn.ghost { color: var(--ink); background: var(--panel); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 0 0 18px; display: block; overflow-x: auto; }
+  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; }
+  .escapes { color: var(--accent); font-weight: 600; }
+  .caught { color: var(--ok); font-weight: 600; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin-bottom: 20px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 15.5px; }
+  .card p { font-size: 14px; color: var(--muted); margin: 0; }
+  .stat { display: flex; gap: 40px; flex-wrap: wrap; margin: 0 0 28px; }
+  .stat div { min-width: 120px; }
+  .stat b { display: block; font-size: 34px; letter-spacing: -0.02em; font-weight: 620; line-height: 1.1; }
+  .stat span { font-size: 13.5px; color: var(--muted); }
+  .note { font-size: 14px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 16px; margin: 0 0 18px; }
+  footer { margin-top: 80px; padding: 32px 0 64px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>preflight<span class="dot">.</span></h1>
+  <p class="tagline">Run only the checks a diff actually implicates — the fast, repo-specific gates that linters and test suites structurally cannot catch.</p>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/jay23606/preflight">View on GitHub</a>
+    <a class="btn ghost" href="https://github.com/jay23606/preflight/blob/main/AGENTS.md">Point your agent at it →</a>
+  </div>
+</header>
+
+<h2>The gap</h2>
+<p>Your linter reads one file. Your type checker reads the type graph. Your test suite is too slow to run on every edit and only catches what someone wrote a test for.</p>
+<p>None of them catch the mistakes that live <em>between</em> files:</p>
+<div class="grid">
+  <div class="card"><h3>Migration without a rollback</h3><p>Discovered during the incident, not before it.</p></div>
+  <div class="card"><h3>Undocumented config read</h3><p>Deploys green, comes up undefined in production.</p></div>
+  <div class="card"><h3>Route changed, spec didn't</h3><p>The published contract now lies to every client.</p></div>
+  <div class="card"><h3>Generated code drift</h3><p>Builds fine, serves the old shape silently.</p></div>
+</div>
+<p>Every one passes <code>tsc</code>, <code>go vet</code>, <code>eslint</code>, and the tests. Every one is about ten lines of script to detect. Almost nobody writes those ten lines, because there is nowhere obvious to put them and no cheap moment to run them.</p>
+
+<h2>What it looks like</h2>
+<pre><code><span class="cmd">$ git add -A &amp;&amp; preflight</span>
+
+preflight · 3 files (staged) · 4/4 checks
+
+  <span class="x">x</span> migration-has-rollback   <span class="dim">101ms  1 file</span>
+  <span class="w">!</span> routes-match-spec         <span class="dim">95ms  1 file</span>
+  <span class="x">x</span> no-hardcoded-secrets     <span class="dim">120ms  2 files</span>
+  <span class="x">x</span> env-documented           <span class="dim">149ms  2 files</span>
+
+<span class="x">env-documented failed</span>
+  <span class="dim">why</span>  Every process.env read must appear in .env.example. A new variable
+       that nobody documented deploys fine in CI and then comes up undefined
+       in production, usually as a confusing downstream error rather than a
+       startup failure.
+  <span class="dim">run</span>  <span class="cmd">node tools/check-env.js src/config.ts src/routes/refunds.ts</span>
+  <span class="dim">---</span>
+  src/routes/refunds.ts:4  reads STRIPE_SECRET_KEY, not in .env.example
+  src/routes/refunds.ts:7  reads REFUNDS_ENABLED, not in .env.example
+
+<span class="x">3 checks failed</span>, <span class="w">1 warned</span>, 0 passed  <span class="dim">(153ms)</span></code></pre>
+<p>The <code>why</code> is the part that matters. It states the failure mode, not what the check does — so the failure is actionable by someone who did not write the check, including an agent that has never seen this repo before.</p>
+
+<h2>Measured, not asserted</h2>
+<div class="stat">
+  <div><b class="caught">4/4</b><span>seeded defects caught by preflight</span></div>
+  <div><b class="escapes">0/4</b><span>caught by the existing toolchain</span></div>
+  <div><b>~250ms</b><span>median run on a typical diff</span></div>
+</div>
+<table>
+  <thead><tr><th>Seeded defect</th><th>Surfaces as</th><th>Baseline</th><th>preflight</th></tr></thead>
+  <tbody>
+    <tr><td>New <code>STRIPE_SECRET_KEY</code> read, undocumented</td><td>undefined config in production</td><td class="escapes">escapes</td><td class="caught">caught</td></tr>
+    <tr><td>Migration shipped with no rollback</td><td>unrecoverable during an incident</td><td class="escapes">escapes</td><td class="caught">caught</td></tr>
+    <tr><td>Live Stripe key hardcoded in config</td><td>credential leak, rotation required</td><td class="escapes">escapes</td><td class="caught">caught</td></tr>
+    <tr><td>New route, <code>openapi.yaml</code> untouched</td><td>published contract drifts</td><td class="escapes">escapes</td><td class="caught">caught</td></tr>
+  </tbody>
+</table>
+<p class="note">The benchmark reports what it does <em>not</em> measure: whether a reviewer would have caught the same defect by reading the diff, false-positive rates on real repositories, and anything about how often these defects actually occur. Run <code>node bench/run.js</code> — the numbers regenerate.</p>
+
+<h2>Why this matters more with AI in the loop</h2>
+<p>An agent writes more code per hour than you can carefully read, and it is systematically weakest exactly where these defects live: it sees the file it is editing, not the invariant three directories away. It cannot know that this repo pairs migrations with rollbacks, or that inline templates here compile at request time rather than build time — unless something tells it, every time, mechanically.</p>
+<p>A <code>preflight.yaml</code> is that mechanism. It converts the institutional knowledge you re-explain in every code review into a two-second command with an exit code. Point an agent at <a href="https://github.com/jay23606/preflight/blob/main/AGENTS.md">AGENTS.md</a> and it knows how to run the checks, read a failure, and write new ones.</p>
+
+<h2>Add it to a repo</h2>
+<pre><code><span class="cmd">npx github:jay23606/preflight init</span>   <span class="dim"># writes a starter preflight.yaml</span>
+<span class="cmd">npx github:jay23606/preflight</span>        <span class="dim"># run it</span></code></pre>
+<p>Node 18+, zero dependencies, works in any language because it shells out. The examples ship checks written in JavaScript, Python, and Go — each in the language its own repo already speaks.</p>
+
+<h3>A check</h3>
+<pre><code>checks:
+  - name: migration-has-rollback
+    when: [<span class="ok">"db/migrations/**/*.up.sql"</span>]
+    run: node tools/check-migrations.js {files}
+    budget: 5s
+    why: &gt;
+      Every up migration needs a matching down. A migration without a
+      rollback is discovered during the incident, not before it.</code></pre>
+
+<h3>On every agent edit</h3>
+<pre><code><span class="dim">// .claude/settings.json</span>
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command",
+                    "command": "npx github:jay23606/preflight --working --quiet" }]
+      }
+    ]
+  }
+}</code></pre>
+
+<footer>
+  MIT licensed · <a href="https://github.com/jay23606/preflight">github.com/jay23606/preflight</a>
+</footer>
+
+</div>
+</body>
+</html>

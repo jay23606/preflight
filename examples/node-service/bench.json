@@ -1,0 +1,25 @@
+{
+  "baseline": "node -e \"const{execFileSync}=require('child_process');const fs=require('fs');const walk=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(d+'/'+e.name):[d+'/'+e.name]);const files=walk('src').filter(f=>f.endsWith('.ts'));for(const f of files)execFileSync(process.execPath,['--experimental-strip-types','--check',f],{stdio:'ignore'});\"",
+  "defects": [
+    {
+      "check": "env-documented",
+      "title": "New STRIPE_SECRET_KEY / REFUNDS_ENABLED reads, undocumented",
+      "surfaces": "undefined config in production"
+    },
+    {
+      "check": "migration-has-rollback",
+      "title": "Migration 002 shipped with no rollback",
+      "surfaces": "unrecoverable during an incident"
+    },
+    {
+      "check": "no-hardcoded-secrets",
+      "title": "Database password hardcoded in a connection string",
+      "surfaces": "credential leak, rotation required"
+    },
+    {
+      "check": "routes-match-spec",
+      "title": "New route added, openapi.yaml untouched",
+      "surfaces": "published contract drifts"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "Order": {
+    "id": "string",
+    "total_cents": "int"
+  }
+}

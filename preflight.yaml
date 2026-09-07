@@ -1,0 +1,72 @@
+# preflight, checking itself. If the tool cannot express its own invariants,
+# it is not worth asking anyone else to adopt it.
+version: 1
+
+extends:
+  - preflight:secrets
+
+checks:
+  # Overrides the preset's version. The examples deliberately contain fake
+  # credentials, so they are excluded here — but a fixture that matches a real
+  # provider's token format is still a mistake: GitHub push protection blocks
+  # the whole repository on it, and nobody can clone or contribute. That is
+  # why the node-service fixture is a connection string and not an API key.
+  - name: no-committed-secrets
+    when: ["**"]
+    not:
+      - "examples/*/scenario/**"
+      - "presets/scripts/**"
+      - "test/**"
+      - "**/*.example"
+      - "**/node_modules/**"
+    run: node presets/scripts/secret-scan.js {files}
+    budget: 10s
+    why: >
+      A credential that reaches a remote branch is compromised even if the
+      next commit removes it. Rotation is the only real fix.
+
+  - name: unit-tests
+    when: ["src/**/*.js", "bin/**/*.js", "test/**/*.js"]
+    run: node --test "test/*.test.js"
+    budget: 2m
+    why: >
+      The runner is what everything else trusts. A regression here fails
+      silently in every repo that has adopted it, as a check that quietly
+      stops running.
+
+  - name: zero-dependencies
+    when: ["package.json"]
+    run: node tools/check-no-deps.js
+    budget: 5s
+    why: >
+      This runs in pre-commit hooks and on every agent edit. A dependency is
+      startup latency and supply-chain surface on someone else's machine, and
+      the promise that `npx` is safe to point at any repo.
+
+  - name: examples-still-fail
+    when: ["examples/**", "src/**", "bin/**"]
+    not: ["examples/*/README.md"]
+    run: node examples/run-demo.js
+    budget: 3m
+    why: >
+      Each example must still fail on its seeded bad change. An example that
+      starts passing is a broken demonstration, not a fixed one — and it is
+      the only end-to-end proof that scoping, budgets and reporting work.
+
+  - name: docs-mention-new-fields
+    severity: warn
+    when: ["src/manifest.js"]
+    run: node tools/check-documented-fields.js
+    budget: 5s
+    why: >
+      A manifest field that exists but is undocumented is a field nobody
+      uses, including the agents that read AGENTS.md to learn the schema.
+
+  - name: version-bumped
+    severity: warn
+    when: ["src/**", "bin/**"]
+    run: node tools/check-version-bump.js
+    budget: 10s
+    why: >
+      Behavior changed without a version bump means `npx` users silently get
+      a different tool than the one the docs describe.
