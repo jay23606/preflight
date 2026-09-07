@@ -27,7 +27,7 @@ checks:
 
   - name: unit-tests
     when: ["src/**/*.js", "bin/**/*.js", "test/**/*.js"]
-    run: node --test "test/*.test.js"
+    run: node tools/run-tests.js
     budget: 2m
     why: >
       The runner is what everything else trusts. A regression here fails

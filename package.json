@@ -1,6 +1,6 @@
 {
   "name": "@jay23606/preflight",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Run only the checks a diff actually implicates — the fast, repo-specific gates that linters and test suites miss.",
   "bin": {
     "preflight": "bin/preflight.js"
@@ -15,7 +15,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js",
+    "test": "node tools/run-tests.js",
     "preflight": "node bin/preflight.js"
   },
   "keywords": [
